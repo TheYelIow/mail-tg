@@ -23,6 +23,13 @@ if (!token || !secret || !publicUrl) {
 const webhookUrl = `${publicUrl.replace(/\/$/, "")}/api/telegram`;
 
 async function main() {
+  const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+  const meData = await meRes.json();
+  if (!meRes.ok || !meData.ok) {
+    console.error("getMe failed ->", JSON.stringify(meData, null, 2));
+    process.exit(1);
+  }
+
   const res = await fetch(
     `https://api.telegram.org/bot${token}/setWebhook`,
     {
@@ -39,9 +46,18 @@ async function main() {
   const data = await res.json();
   console.log("setWebhook ->", JSON.stringify(data, null, 2));
 
-  const info = await fetch(
+  if (!res.ok || !data.ok) {
+    process.exit(1);
+  }
+
+  const infoRes = await fetch(
     `https://api.telegram.org/bot${token}/getWebhookInfo`,
-  ).then((r) => r.json());
+  );
+  const info = await infoRes.json();
+  if (!infoRes.ok || !info.ok) {
+    console.error("getWebhookInfo failed ->", JSON.stringify(info, null, 2));
+    process.exit(1);
+  }
   console.log("getWebhookInfo ->", JSON.stringify(info, null, 2));
 }
 

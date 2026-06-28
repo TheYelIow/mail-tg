@@ -3,7 +3,11 @@ function required(name: string): string {
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
-  return value;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return trimmed;
 }
 
 export const env = {
