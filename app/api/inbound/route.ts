@@ -89,18 +89,29 @@ export async function POST(req: Request): Promise<Response> {
     );
 
     // 4. Remember the thread, then add a "Reply" button that points back to it.
+    //    Isolated: a Redis hiccup here must NOT 500 the request, or Resend would
+    //    retry and re-post the whole email (duplicates).
     if (telegramMessageId !== null) {
-      await saveThread(telegramMessageId, {
-        emailId: meta.email_id,
-        messageId,
-        references: buildReferences(email, messageId),
-        replyTo: fromAddr,
-        receivedFor,
-        subject,
-      });
-      await editMessageReplyMarkup(env.telegramChatId(), telegramMessageId, [
-        [{ text: "✍️ Ответить", callback_data: `reply:${telegramMessageId}` }],
-      ]);
+      try {
+        await saveThread(telegramMessageId, {
+          emailId: meta.email_id,
+          messageId,
+          references: buildReferences(email, messageId),
+          replyTo: fromAddr,
+          receivedFor,
+          subject,
+        });
+        await editMessageReplyMarkup(env.telegramChatId(), telegramMessageId, [
+          [{ text: "✍️ Ответить", callback_data: `reply:${telegramMessageId}` }],
+        ]);
+      } catch (err) {
+        console.error("Failed to save thread / add reply button:", err);
+        await sendMessage(
+          env.telegramChatId(),
+          "⚠️ Не удалось сохранить тред (проверь Upstash Redis в env) — " +
+            "кнопка «Ответить» недоступна для этого письма.",
+        );
+      }
     }
 
     // 5. Forward attachments as real files/photos (download URLs valid ~1h).
